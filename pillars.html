@@ -1,0 +1,1600 @@
+<html>
+<head>
+<title>Pillars</title>
+</head>
+<body style="color: white; background-color: black; font-size:15px; font-family:fixedsys;" alink="white" link="white" vlink="white" >
+
+<p id="debugout1">
+</p>
+<p id="debugout2">
+</p>
+<center>
+<canvas id="MainCanvas" width="870px" height="406px">
+Error: Your browser does not support HTML5 Canvas!
+</canvas>
+</center>
+<br>   
+
+<script type="text/javascript" >
+
+var MainCanvas = document.getElementById('MainCanvas');
+var MainContext = MainCanvas.getContext('2d');
+/*
+MainContext.scale(1.0,1.0);
+MainCanvas.style.width = "600px";
+MainCanvas.style.height= "400px";
+*/
+var CANVAS_WIDTH = 870;
+var CANVAS_HEIGHT = 406;
+//=============================================================================
+function debugout( msg, index )
+{
+  var ele = document.getElementById("debugout" + index);
+  
+  if( msg.indexOf("++") > -1 )
+    ele.innerHTML += msg;
+  else
+    ele.innerHTML = msg;
+}
+//=============================================================================
+
+var MAX_SHAPE_WIDTH  = 5;
+var MAX_SHAPE_HEIGHT = 5;
+var MAX_SHAPE_TYPES = 7;
+
+// T, Z, S, J, L, I, O
+// original pit dimensions 9x16
+
+var Shape_T  = 1;
+var Shape_Z  = 2;
+var Shape_S  = 3;
+var Shape_J  = 4;
+var Shape_L  = 5;
+var Shape_I  = 6;
+var Shape_O  = 7;
+
+var PLAYFIELD_WIDTH = 30;
+var PLAYFIELD_HEIGHT = 14;
+ 
+//var MAX_LINES_FORMED_COUNT = 5;
+
+//=============================================================================
+
+Shape.prototype.Id = 0;
+Shape.prototype.X = 0
+Shape.prototype.Y = 0;
+Shape.prototype.Cell = 0;
+
+function Shape() 
+{
+  this.Cell = new Array(MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT)
+  var i;
+  for( i = 0; i < MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT; i++ )
+       this.Cell[i] = 0;
+}
+
+//=============================================================================
+
+var ShapeList = new Array(MAX_SHAPE_TYPES);
+var CurrentShape = new Shape();
+
+var StaticPlayField = new Array(PLAYFIELD_WIDTH*PLAYFIELD_HEIGHT);
+var OutputPlayField = new Array(PLAYFIELD_WIDTH*PLAYFIELD_HEIGHT);
+var DeletePlayField = new Array(PLAYFIELD_WIDTH*PLAYFIELD_HEIGHT);
+
+// * * * for custom pit dimensions * * *
+var LEFT_WALL_X  = Math.floor(PLAYFIELD_WIDTH / 2 - 6);
+var RIGHT_WALL_X = LEFT_WALL_X + 7;
+var WALL_CELL_VALUE = 8;
+
+var SHAPE_START_X = Math.floor(PLAYFIELD_WIDTH / 2 - MAX_SHAPE_WIDTH / 2 - 1);
+
+var FallSpeedCounter = 0;
+var FallSpeedCounterMax = 0;
+var FallSpeedIncrement = 0;
+
+var MoveLeftFlag = 0;
+var MoveRightFlag = 0;
+var DropFlag = 0;
+var RotateRightFlag = 0;
+var RotateLeftFlag = 0;
+var MinusFlag = 0, PlusFlag = 0;
+var KeyPressFlag = 0;
+
+var Option_Flag_List = new Array(9);
+var Option_Running_Flag = 0;
+var Difficulty_Change_Flag = 0;
+var Option_Paused_Flag = 0;
+
+var StartRandomShapeFlag = 0;
+var InstantDropFlag = 0;
+
+var CurrentGameState = 0;
+var GAME_STATE_BEGIN  = 0;
+var GAME_STATE_GAME_OVER  = 1;
+var GAME_STATE_RUNNING  = 2;
+var GAME_STATE_PAUSED  = 3;
+
+var TimeDelayCounter = 0;
+var TIME_DELAY_COUNTER_MAX  = 20;
+
+var HIT_BOTTOM_POINTS  = 2;
+var CLEAR_LINE_POINTS  = 10;
+var LINE_COUNT_BONUS_POINTS = 5;
+var SHAPE_BONUS_POINTS  = 100;
+
+var HighScore = 0;
+var CurrentScore = 0;
+var CurrentSpeed = 0; 
+var CurrentLineCount = 0; 
+var CurrentPieceIndex = 0; 
+var NextPieceIndex = 0; 
+var CurrentPiece = new Shape();
+var NextPiece = new Shape();
+var HundredShapesClearedLimitCount = 0;
+var CurrentShapesClearedCount = 0;
+
+var DifficultyLevel = 0;
+var EASY_LEVEL = -1;
+var NORMAL_LEVEL = 0;
+var HARD_LEVEL = 1;
+
+var MoveLeftCounter = 0, MoveLeftCounterMax = 0;
+var MoveRightCounter = 0, MoveRightCounterMax = 0;
+var RotateRightCounter = 0, RotateRightCounterMax = 0;
+var RotateLeftCounter = 0, RotateLeftCounterMax = 0;
+var DropCounter = 0, DropCounterMax = 0;
+
+var GeneralKeyDelayCounter = 0;
+var GeneralKeyDelayCounterMax = 0;
+
+var PausePlayAnimationStateFlag = 0;
+var RefreshDelayCounter = 0;
+var RefreshDelayCounterMax = 0;
+var CellClearChainCount = 0;
+
+var MAX_PICTURES = 100;
+var TiledBackGroundFlag = 0;
+var ShowBackGroundFlag = 0;
+var BackGroundPictureIndex = 0;
+
+var PicWidthList = new Array(MAX_PICTURES);
+var PicHeightList = new Array(MAX_PICTURES);
+    
+var GameResolutionX = 0;
+var GameResolutionY = 0;
+
+var CellWidthPixels = 0;
+var CellHeightPixels = 0;
+
+var CellTextWidthPixels = 0;
+var CellTextHeightPixels = 0; 
+
+//=============================================================================
+function DoKeyDown(dEvent)
+{ 
+ switch (dEvent.keyCode)
+  {
+        case 38: // up
+          break;
+        case 40: // down
+          DropFlag = 1;
+          break;
+        case 37: // left 
+          MoveLeftFlag = 1;
+          break;
+        case 39: // right
+          MoveRightFlag = 1;
+          break;
+        case 68: // d
+          RotateLeftFlag = 1;
+          break;
+        case 70: // f
+          RotateRightFlag = 1;
+          break;
+        case 107: // =
+          PlusFlag = 1;
+
+          if( CurrentGameState == GAME_STATE_BEGIN || CurrentGameState == GAME_STATE_GAME_OVER )
+              CurrentSpeed = CurrentSpeed + 1;
+          if( CurrentSpeed > 9 )
+              CurrentSpeed = 9;     
+          break;
+        case 109: // -
+          MinusFlag = 1;
+
+          if( CurrentGameState == GAME_STATE_BEGIN || CurrentGameState == GAME_STATE_GAME_OVER )
+              CurrentSpeed = CurrentSpeed - 1;
+          if( CurrentSpeed < 1 )
+              CurrentSpeed = 0;         
+          break;
+        case 13: // ENTER
+        case 32: // SPACE BAR
+          Option_Running_Flag = 1;
+          break;       
+        case 80: // p
+          Option_Paused_Flag = 1;
+          break;
+        case 112:
+          Difficulty_Change_Flag = 1;
+          break;         
+        default: 
+          break;  
+  };
+
+  KeyPressFlag = 1;
+  UserInteraction();
+  UserInteraction2();  
+}
+//=============================================================================
+function DoKeyUp(dEvent)
+{ 
+ switch (dEvent.keyCode)
+  {
+        case 38: // up
+          break;
+        case 40: // down
+          DropFlag = 0;
+          break;
+        case 37: // left 
+          MoveLeftFlag = 0;
+          break;
+        case 39: // right
+          MoveRightFlag = 0;
+          break;
+        case 68: // d
+          RotateLeftFlag = 0;
+          break;
+        case 70: // f
+          RotateRightFlag = 0;
+          break;
+        case 107: // =
+          PlusFlag = 0;
+          break;
+        case 109: // -
+          MinusFlag = 0;
+          break;
+        case 13: // ENTER
+        case 32: // SPACE BAR
+          Option_Running_Flag = 0;
+          break;       
+        case 80: // p
+          Option_Paused_Flag = 0;
+          break;
+        case 112:
+          Difficulty_Change_Flag = 0;
+          break;           
+        default: 
+          break;   
+  };
+
+  KeyPressFlag = 0;  
+}
+//=============================================================================
+
+window.addEventListener('keydown',DoKeyDown,true);
+window.addEventListener('keyup', DoKeyUp,true);
+
+//=============================================================================
+
+Array2D.prototype.Data = 0;
+Array2D.prototype.Width = 0;
+Array2D.prototype.Height = 0;
+Array2D.prototype.get = Array2D_Get;
+Array2D.prototype.set = Array2D_Set;
+Array2D.prototype.setdata = Array2D_SetData;
+Array2D.prototype.dump = Array2D_Dump;
+
+//-----------------------------------------------------------------------------
+function Array2D( array_width, array_height ) 
+{
+  this.Width = array_width;
+  this.Height = array_height;
+  this.Data = new Array( array_width * array_height );
+  
+  var i;
+  for( i = 0; i < array_width * array_height; i++ )
+       this.Data[i] = 0;
+};
+//-----------------------------------------------------------------------------
+function Array2D_Get( x, y )
+{
+  return this.Data[ y * this.Width + x ];
+}
+//-----------------------------------------------------------------------------
+function Array2D_Set( x, y, value )
+{
+  this.Data[ y * this.Width + x ] = value;
+}
+//-----------------------------------------------------------------------------
+function Array2D_SetData( thedata )
+{
+  this.Data = thedata;
+}
+//-----------------------------------------------------------------------------
+function Array2D_Dump()
+{
+  var str = '', x, y;
+  
+  for( y = 0; y < this.Height; y++ )
+   {
+    for( x = 0; x < this.Width; x++ )
+        str += this.get( x, y ) + ",";
+    str += '<br>';   
+   }
+  return str;
+}
+function GetArray( zarray, array_width, x, y )
+{
+    return  zarray[ x + y * array_width ];
+}
+//=============================================================================
+function SetArray( zarray, array_width, x, y, val ) 
+{ 
+  var p = x + y * array_width;
+  zarray[ x + y * array_width ] = val; 
+}
+//=============================================================================
+function Rand( min, max )
+{
+  return Math.floor((Math.random() * (max + 1 - min)) + min);
+}
+//=============================================================================
+function CopyShape( ShapeDest, ShapeSrc )
+{
+ var i;
+
+ ShapeDest.Id = ShapeSrc.Id;
+ ShapeDest.X = ShapeSrc.X;
+ ShapeDest.Y = ShapeSrc.Y;
+ var msg = '';
+ for( i = 0; i < ShapeSrc.Cell.length; i++ )
+  {
+    ShapeDest.Cell[i] = ShapeSrc.Cell[i];
+    msg += ShapeSrc.Cell[i] + ',';
+  }
+}
+//=============================================================================
+function InitializeShapeShapes()
+{    
+
+return;
+ 
+var X, Y, T, Temp;
+var Str = new Array( MAX_SHAPE_TYPES * MAX_SHAPE_HEIGHT );
+var MaxCellColorTypes = 1;
+
+  SetArray( Str, MAX_SHAPE_TYPES, 0, 0,  ".....");
+  SetArray( Str, MAX_SHAPE_TYPES, 0, 1,  "..#..");
+  SetArray( Str, MAX_SHAPE_TYPES, 0, 2,  "..#..");
+  SetArray( Str, MAX_SHAPE_TYPES, 0, 3,  "..#..");
+  SetArray( Str, MAX_SHAPE_TYPES, 0, 4,  ".....");
+
+ for( T = 1; T <= 6; T++ )
+   for( Y = 0; Y <= 4; Y++ )
+     {
+      Temp = GetArray( Str, MAX_SHAPE_TYPES, 0, Y );
+      SetArray( Str, MAX_SHAPE_TYPES, T, Y, Temp);
+     }
+
+         switch( DifficultyLevel )
+          {
+            case EASY_LEVEL:
+               MaxCellColorTypes = 4;
+            case NORMAL_LEVEL:
+               MaxCellColorTypes = 5;
+            case HARD_LEVEL:
+               MaxCellColorTypes = 7;
+            default:
+               break;
+          }
+        
+for( T = 0; T <= MAX_SHAPE_TYPES - 1; T++ )
+{
+ 
+ ShapeList[T] = new Shape();
+ ShapeList[T].Id = T + 1;
+ ShapeList[T].X = 0;
+ ShapeList[T].Y = 0;
+ 
+ for( Y = 0 ; Y <= MAX_SHAPE_HEIGHT - 1; Y++ )
+  {
+   Temp = GetArray( Str, MAX_SHAPE_TYPES, T, Y );
+   
+   for( X = 0; X <= MAX_SHAPE_WIDTH - 1; X++ )
+    {
+     if( Temp.substring(X, X + 1) == "@" )
+        SetArray( ShapeList[T].Cell, MAX_SHAPE_WIDTH, X, Y, Rand(1, MaxCellColorTypes));  
+     else
+        SetArray( ShapeList[T].Cell, MAX_SHAPE_WIDTH, X, Y, 0);  
+     }
+  }
+}
+  
+}
+//=============================================================================
+function RotateShapeLeft( TheShape )
+{
+  var TheShape2 = new Shape();
+  var p = new Array(3);
+  
+  TheShape2.id = TheShape.Id;
+  TheShape2.X = TheShape.X;
+  TheShape2.Y = TheShape.Y;
+
+   // shift shape up
+  
+   p[0] = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, 2, 1);
+   p[1] = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, 2, 2);
+   p[2] = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, 2, 3);
+   SetArray( TheShape2.Cell, MAX_SHAPE_WIDTH, 2, 1, p[1]);
+   SetArray( TheShape2.Cell, MAX_SHAPE_WIDTH, 2, 2, p[2]);
+   SetArray( TheShape2.Cell, MAX_SHAPE_WIDTH, 2, 3, p[0]); 
+   /*
+   var x, y, s = '';
+   for( y = 0; y < MAX_SHAPE_HEIGHT; y++ )
+    {
+      for( x = 0; x < MAX_SHAPE_WIDTH; x++ )
+        s += GetArray
+      s += '<br>';
+    }*/
+   
+   CopyShape( TheShape, TheShape2 );   
+}
+//=============================================================================
+function RotateShapeRight( TheShape )
+{
+  var TheShape2 = new Shape();
+  var p = new Array(3);
+  
+  TheShape2.id = TheShape.Id;
+  TheShape2.X = TheShape.X;
+  TheShape2.Y = TheShape.Y;
+  
+   // shift shape down
+  
+   p[0] = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, 2, 1);
+   p[1] = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, 2, 2);
+   p[2] = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, 2, 3);
+   SetArray( TheShape2.Cell, MAX_SHAPE_WIDTH, 2, 1, p[2]);
+   SetArray( TheShape2.Cell, MAX_SHAPE_WIDTH, 2, 2, p[0]);
+   SetArray( TheShape2.Cell, MAX_SHAPE_WIDTH, 2, 3, p[1]); 
+   
+   CopyShape( TheShape, TheShape2 );    
+}
+//=============================================================================
+var TheImageList = new Array();
+var TheSoundList = new Array();
+
+var ImagesLoadedFlag = 0;
+var MAX_IMAGES = 0;
+
+function LoadMedia()
+{
+  var ImageNameList = "block0.png,block1.png,block2.png,block3.png,block4.png,block5.png,block6.png,block7.png,block8.png,";
+  ImageNameList += "LightGrey-03.png,Brown-02.png,Brown-09.png,Brown-10.png,clouds.png,outerspace.png";
+  var SoundNameList = "Crash1.wav,NewLevel.wav,Rotate.wav,RowAnim04.wav";
+  
+  var PicWidthStr =  "29,29,29,29,29,29,29,29,29,100,32,180,142,445,326";
+  var PicHeightStr = "29,29,29,29,29,29,29,29,29,100,32,120,103,314,271";
+  
+  var ImageFileList = ImageNameList.split(",");
+  var SoundFileList = SoundNameList.split(",");
+  var LocalPicWidthList = PicWidthStr.split(",");
+  var LocalPicHeightList = PicHeightStr.split(",");
+  
+  var i;
+  MAX_IMAGES = ImageFileList.length;
+  
+  for( i = 0; i < ImageFileList.length; i++ )
+   {
+      TheImageList[i] = new Image();
+      TheImageList[i].src = 'media/' + ImageFileList[i]; 
+      PicWidthList[i] = eval(LocalPicWidthList[i]);
+      PicHeightList[i] = eval(LocalPicHeightList[i]);
+   }
+
+  for( i = 0; i < SoundFileList.length; i++ )
+       TheSoundList[i] = new Audio( 'media/' + SoundFileList[i] );  
+       
+  TheImageList[MAX_IMAGES - 1].onload = SetImagesLoadedFlag;  
+}
+
+function SetImagesLoadedFlag()
+{
+  ImagesLoadedFlag = 1;
+}
+//=============================================================================
+function DoHighScore( Arg )
+{
+   return 0;
+}
+//=============================================================================
+function DrawCell( PictureIndex, X, Y )
+{
+  MainContext.drawImage( TheImageList[PictureIndex], X, Y );
+}
+//=============================================================================
+function DrawText( str, X, Y )
+{
+   MainContext.strokeText(str, X, Y);  
+   MainContext.fillText(str, X, Y);    
+}
+//=============================================================================
+function PlaySound( Index )
+{  
+ if( navigator.userAgent.indexOf("Chrome") == -1 )
+   {
+     TheSoundList[Index].pause();
+     TheSoundList[Index].play();
+   }
+}
+//=============================================================================
+function InitGame()
+{
+    ShowBackGroundFlag = 1;
+    TiledBackGroundFlag = 1;
+    BackGroundPictureIndex = Rand(9, 14);
+    
+    GameResolutionX = CANVAS_WIDTH;
+    GameResolutionY = CANVAS_HEIGHT;
+    
+    CellTextHeightPixels = GameResolutionY / PLAYFIELD_HEIGHT;
+    CellTextWidthPixels = CellTextHeightPixels * (12 / 20);
+    CellWidthPixels = GameResolutionX / PLAYFIELD_WIDTH;
+    CellHeightPixels = GameResolutionY / PLAYFIELD_HEIGHT;
+    
+    //Bitmap_Init hwnd, GameResolutionX, GameResolutionY
+    //Bitmap_InitFont CellTextHeightPixels * 1.2, "Courier"
+
+    //AzSoundInit hwnd
+    LoadMedia();
+    HighScore = DoHighScore(1)
+    
+    // * * * * * * * * * * * * * * * * * * * * * * * * * *
+    
+    CurrentSpeed = 5;
+    
+    FallSpeedCounterMax = 100;
+    FallSpeedIncrement = CurrentSpeed;
+    FallSpeedCounter = 0;
+    
+    MoveLeftCounterMax = 1;
+    MoveRightCounterMax = 1;
+    RotateRightCounterMax = 1;
+    RotateLeftCounterMax = 1;
+    DropCounterMax = 1;
+    
+    GeneralKeyDelayCounterMax = 1;
+    
+    StartRandomShapeFlag = 0;
+    
+    HundredShapesClearedLimitCount = 0;
+    CurrentGameState = GAME_STATE_BEGIN;
+    
+    CurrentPiece.Cell = new Array( MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT );
+    CurrentShape.Cell = new Array( MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT );
+
+    PausePlayAnimationStateFlag = 0;
+    RefreshDelayCounter = 0;
+    RefreshDelayCounterMax = 10;
+    
+    DifficultyLevel = NORMAL_LEVEL;
+    
+    ClearDeletePlayField();
+    StartRandomShape();
+}
+//=============================================================================
+function DrawShape2OutputPlayField( TheShape )
+{   
+  var X, Y, X2, Y2, Cell;
+
+  for( Y = 0; Y <= MAX_SHAPE_HEIGHT - 1; Y++ )
+   {
+    for( X = 0; X <= MAX_SHAPE_WIDTH - 1; X++ )
+      {
+        X2 = TheShape.X + X;
+        Y2 = TheShape.Y + Y;
+        Cell = GetArray( TheShape.Cell, MAX_SHAPE_WIDTH, X, Y );
+
+        if( Cell > 0 && 0 <= X2 && X2 < PLAYFIELD_WIDTH &&
+           0 <= Y2 && Y2 < PLAYFIELD_HEIGHT )
+           SetArray( OutputPlayField, PLAYFIELD_WIDTH, X2, Y2, Cell);
+           
+      }  
+   }
+}
+//=============================================================================
+function DrawBackGround()
+{
+ var Index, PicWidth, PicHeight, TileXCount, TileYCount, X, Y;
+    
+ Index = BackGroundPictureIndex;
+ 
+ PicWidth = PicWidthList[Index];
+ PicHeight = PicHeightList[Index];
+         
+ TileXCount = GameResolutionX / PicWidth + 1;
+ TileYCount = GameResolutionY / PicHeight + 1;
+ 
+ if( TiledBackGroundFlag > 0 )
+   {
+    for( Y = 0; Y <= TileYCount - 1; Y++ )
+      for( X = 0; X <= TileXCount - 1; X++ )
+          DrawCell( Index, X * PicWidth, Y * PicHeight );
+   }
+ else
+    DrawCell( Index, 0, 0 );
+ 
+}
+//=============================================================================
+function DrawOutputPlayField2BufferText()
+{
+  var X, Y, Cell, X2, Y2;
+
+  if( ShowBackGroundFlag == 1 )
+     DrawBackGround();
+  
+  for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+  {
+    for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+      {       
+        Cell = GetArray( OutputPlayField, PLAYFIELD_WIDTH, X, Y );
+        X2 = X * CellWidthPixels;
+        Y2 = Y * CellHeightPixels;        
+        
+
+         if( ShowBackGroundFlag == 1 && Cell == 0 )
+            ; // null statement
+         else
+            DrawCell( Cell, X2, Y2 );
+            
+         Cell = GetArray( DeletePlayField, PLAYFIELD_WIDTH, X, Y );
+         if( Cell > 0 )
+             DrawCell( 8, X2, Y2 );
+      }
+
+   }
+   
+}
+//=============================================================================
+function ClearStaticPlayField()
+{
+  var X, Y;
+
+    for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )    
+     for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+          SetArray( StaticPlayField, PLAYFIELD_WIDTH, X, Y, 0);
+}
+//=============================================================================
+function ClearOutputPlayField()
+{
+  var X, Y;
+
+  for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )    
+    for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+         SetArray( OutputPlayField, PLAYFIELD_WIDTH, X, Y, 0);          
+}
+//=============================================================================
+function ClearDeletePlayField()
+{
+  var X, Y;
+
+  for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )    
+    for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+         SetArray( DeletePlayField, PLAYFIELD_WIDTH, X, Y, 0);          
+}
+//=============================================================================
+function DropShape()
+{    
+    var ReturnValue = 0;
+    
+    FallSpeedCounter = FallSpeedCounter + FallSpeedIncrement + 1;
+    
+    if( FallSpeedCounter > FallSpeedCounterMax )
+      {
+       FallSpeedCounter = 0;
+       CurrentShape.Y = CurrentShape.Y + 1;
+       ReturnValue = 1;
+      }
+/*      
+var x, y, msg = '';
+msg += 'id = ' + CurrentShape.id + ' X= '+CurrentShape.X+' Y=' +CurrentShape.Y+'<br>';
+for( y = 0; y < MAX_SHAPE_HEIGHT; y++ )
+ {
+ for( x = 0; x < MAX_SHAPE_WIDTH; x++ )    
+   msg +=  GetArray( CurrentShape.Cell, MAX_SHAPE_WIDTH, x, y) + ',';    
+  msg += '<br>';
+ }
+debugout(msg,2);
+*/
+    return ReturnValue;
+}
+//=============================================================================
+function CreateRandomPillar()
+{
+var ThePillar = new Shape();
+
+ var X, Y, T;
+ var Str = new Array(MAX_SHAPE_HEIGHT);
+ var MaxCellColorTypes = 1;
+
+ //SetArray( Str, MAX_SHAPE_WIDTH, X2, Y2, Temp);
+        
+ Str[0] = ".....";
+ Str[1] = "..#..";
+ Str[2] = "..#..";
+ Str[3] = "..#..";
+ Str[4] = ".....";
+        
+ ThePillar.Id = 1;
+ ThePillar.X = 0;
+ ThePillar.Y = 0;
+ ThePillar.Cell = new Array(MAX_SHAPE_WIDTH*MAX_SHAPE_HEIGHT);
+ 
+         switch( DifficultyLevel )
+          {
+           case EASY_LEVEL:
+             MaxCellColorTypes = 4;
+             break;
+           case NORMAL_LEVEL:
+             MaxCellColorTypes = 5;
+             break;
+           case HARD_LEVEL:
+             MaxCellColorTypes = 6;
+             break;
+           default:
+             break;
+          }
+       
+ for( Y = 0; Y <= MAX_SHAPE_HEIGHT - 1; Y++ )
+   for( X = 0; X <= MAX_SHAPE_WIDTH - 1; X++ )
+     {
+      if( Str[Y].substring(X, X+1) == "#" )
+        SetArray( ThePillar.Cell, MAX_SHAPE_WIDTH, X, Y, Rand(1, MaxCellColorTypes));
+      else
+        SetArray( ThePillar.Cell, MAX_SHAPE_WIDTH, X, Y, 0 );
+     }
+
+ return ThePillar;
+}
+//=============================================================================
+function StartRandomShape()
+{    
+    if( CurrentPiece.Id == 0 && NextPiece.Id == 0 )
+      {
+       CopyShape( CurrentPiece, CreateRandomPillar());
+       CopyShape( NextPiece, CreateRandomPillar());   
+      }
+    else
+      {
+       CopyShape( CurrentPiece, NextPiece );
+       NextPiece = CreateRandomPillar();
+      }
+            
+    CopyShape( CurrentShape, CurrentPiece );
+    CurrentShape.X = SHAPE_START_X;
+    CurrentShape.Y = -2;
+    
+}    
+//=============================================================================
+function DrawWallsStaticPlayField()
+{
+  var X, Y;
+  
+  for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+   {         
+     SetArray( StaticPlayField, PLAYFIELD_WIDTH, LEFT_WALL_X, Y, WALL_CELL_VALUE );
+     SetArray( StaticPlayField, PLAYFIELD_WIDTH, RIGHT_WALL_X, Y, WALL_CELL_VALUE );    
+   } 
+
+  for( X = LEFT_WALL_X; X <= RIGHT_WALL_X; X++ )
+     SetArray( StaticPlayField, PLAYFIELD_WIDTH, X, PLAYFIELD_HEIGHT - 1, WALL_CELL_VALUE);         
+}
+//=============================================================================
+function CopyStaticPlayField2OutputPlayField()
+{
+  var X, Y, Z;
+
+  for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+    for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+      { 
+       Z = GetArray( StaticPlayField, PLAYFIELD_WIDTH, X, Y );
+       SetArray( OutputPlayField, PLAYFIELD_WIDTH, X, Y, Z ); 
+      }
+   
+}
+//=============================================================================
+function CheckShapeCollideStaticPlayField()
+{
+  var X, Y, X2, Y2, ReturnValue, ShapeCell, PlayFieldCell;
+  
+  ReturnValue = 0;
+  
+  for( Y = 0; Y <= MAX_SHAPE_HEIGHT - 1; Y++ )
+   {
+    for( X = 0; X <= MAX_SHAPE_WIDTH - 1; X++ )
+     {
+        X2 = CurrentShape.X + X;
+        Y2 = CurrentShape.Y + Y;
+        
+        ShapeCell = GetArray( CurrentShape.Cell, MAX_SHAPE_WIDTH, X, Y );
+        PlayFieldCell = GetArray( StaticPlayField, PLAYFIELD_WIDTH, X2, Y2 );
+        
+        if( ShapeCell > 0 && 0 <= X2 && X2 < PLAYFIELD_WIDTH && 0 <= Y2 && Y2 < PLAYFIELD_HEIGHT )
+         if( PlayFieldCell > 0 )
+          {
+           ReturnValue = 1;
+           break;
+          }
+        
+     }
+    
+    if( ReturnValue == 1 )
+       break; 
+   }
+
+  return ReturnValue;
+}
+//=============================================================================
+function PasteShape2StaticPlayField()
+{
+  var X, Y, X2, Y2, ShapeCell;
+  
+  for( Y = 0; Y <= MAX_SHAPE_HEIGHT - 1; Y++ )
+    for( X = 0; X <= MAX_SHAPE_WIDTH - 1; X++ )
+     {   
+        X2 = CurrentShape.X + X;
+        Y2 = CurrentShape.Y + Y;
+        ShapeCell = GetArray( CurrentShape.Cell, MAX_SHAPE_WIDTH, X, Y );
+        
+        if( ShapeCell > 0 && 0 <= X2 && X2 < PLAYFIELD_WIDTH &&
+           0 <= Y2 && Y2 < PLAYFIELD_HEIGHT )           
+           SetArray( StaticPlayField, PLAYFIELD_WIDTH, X2, Y2, ShapeCell );   
+     }
+
+}
+//=============================================================================
+function InstantDrop()
+{
+  var XOld, YOld, X, Y;
+
+  for( Y = PLAYFIELD_HEIGHT - 1; Y >= 0; Y-- )
+   {
+     XOld = CurrentShape.X;
+     YOld = CurrentShape.Y;
+
+     CurrentShape.Y = CurrentShape.Y + 1;
+
+     if( CheckShapeCollideStaticPlayField() > 0 )
+      {
+        CurrentShape.X = XOld;
+        CurrentShape.Y = YOld;
+
+        PasteShape2StaticPlayField();
+        StartRandomShapeFlag = 1;     
+        break;
+      }
+  }
+}
+//=============================================================================
+function UserInteraction()
+{
+ var ShapeBackUp = new Shape();
+ ShapeBackUp.Cell = new Array(MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT);
+ 
+if( CurrentGameState == GAME_STATE_RUNNING )
+{
+ CopyShape( ShapeBackUp, CurrentShape );
+
+ if( MoveLeftFlag )
+  {
+    MoveLeftCounter = MoveLeftCounter + 1;
+    
+    if( MoveLeftCounter >= MoveLeftCounterMax )
+      {
+       CurrentShape.X = CurrentShape.X - 1;
+       MoveLeftCounter = 0;
+      }
+  }
+ else
+  { 
+    MoveLeftCounter = 0;
+  }
+ 
+  if( MoveRightFlag )
+   {
+    MoveRightCounter = MoveRightCounter + 1;
+    
+    if( MoveRightCounter >= MoveRightCounterMax )
+     {
+       CurrentShape.X = CurrentShape.X + 1;
+       MoveRightCounter = 0;
+     }
+   }
+  else
+   {
+    MoveRightCounter = 0;
+   }
+   
+  if( RotateRightFlag )
+   {
+    RotateRightCounter = RotateRightCounter + 1;
+    
+    if( RotateRightCounter >= RotateRightCounterMax )
+     {
+       RotateShapeRight( CurrentShape );
+       RotateRightCounter = 0;
+       PlaySound(2);
+     }
+   }
+  else
+   {
+    RotateRightCounter = 0;
+   }
+ 
+   if( RotateLeftFlag )
+    {
+      RotateLeftCounter = RotateLeftCounter + 1;
+    
+      if( RotateLeftCounter >= RotateLeftCounterMax )
+       {
+         RotateShapeLeft( CurrentShape );
+         RotateLeftCounter = 0;
+         PlaySound(2);
+       }
+    }
+   else
+    {
+      RotateRightCounter = 0;
+    }
+ 
+ if( DropFlag )
+  {
+    DropCounter = DropCounter + 1;
+    
+    if( DropCounter >= DropCounterMax )
+      {
+       InstantDropFlag = 1;
+       DropCounter = 0;
+       PlaySound(0);
+      }
+  }
+ else
+    DropCounterMax = 0;
+   
+ if( CheckShapeCollideStaticPlayField() )
+     CopyShape( CurrentShape, ShapeBackUp );
+}
+
+}
+//=============================================================================
+function CheckTripleEqual(Comparer, Compared1, Compared2, Compared3)
+{
+   if( Compared1 == Comparer && Compared2 == Comparer && Compared3 == Comparer )
+      return 1;
+   else
+      return 0;
+}
+//=============================================================================
+function CheckFormLines()
+{
+   var ClearArea = new Array2D(4,4);
+   var DestroyArea = new Array2D(4,4);
+   var StaticPlayFieldptr = new Array2D( PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT );
+   var DeletePlayFieldptr = new Array2D( PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT );
+   StaticPlayFieldptr.setdata( StaticPlayField );   
+   DeletePlayFieldptr.setdata( DeletePlayField );
+   
+   var Comparer = 0;
+   var CellCount = new Array(7);
+   var X, Y, X2, Y2, X3, Y3, ComboCount, i;
+    
+    ComboCount = 0;
+
+    for( Y = PLAYFIELD_HEIGHT - 2; Y >= 1; Y-- )
+    {
+      for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
+       {         
+         if( StaticPlayFieldptr.get(X, Y) > 0 )
+           {  
+            for( Y3 = 0; Y3 <= 4; Y3++ )
+              for( X3 = 0; X3 <= 4; X3++ )
+               {
+                ClearArea.set( X3, Y3, 0 );
+                DestroyArea.set( X3, Y3, 0 );
+               }
+             
+            X3 = 0;
+               
+            for( X2 = X - 2; X2 <= X + 2; X2++ )
+             {
+               Y3 = 0;
+             for( Y2 = Y - 2; Y2 <= Y + 2; Y2++ )
+              {
+                if( 0 <= X2 && X2 <= PLAYFIELD_WIDTH - 1 && 0 <= Y2 && Y2 <= PLAYFIELD_HEIGHT - 1 )
+                  {
+                   if( StaticPlayFieldptr.get(X2, Y2) != WALL_CELL_VALUE && StaticPlayFieldptr.get(X2, Y2) > 0 )
+                    ClearArea.set(X3, Y3, StaticPlayFieldptr.get(X2, Y2));
+                   else
+                    ClearArea.set(X3, Y3, 0);
+                  }
+                
+                Y3 = Y3 + 1;
+               }
+             X3 = X3 + 1;
+            }
+/*            
+    # # # # #
+    # # # # #
+    # # . # #
+    # # # # #
+    # # # # #
+*/    
+    
+    Comparer = ClearArea.get(2,2);
+    
+    if( Comparer > 0 )
+     {
+    
+    // topleft
+    CellCount[0] = CheckTripleEqual(Comparer, ClearArea.get(0, 0), ClearArea.get(1, 1), ClearArea.get(2, 2));
+    
+    if( CellCount[0] )
+     {
+      DestroyArea.set(0, 0, 1);
+      DestroyArea.set(1, 1, 1);
+      DestroyArea.set(2, 2, 1);
+     }
+    
+    // top
+    CellCount[1] = CheckTripleEqual(Comparer, ClearArea.get(2, 0), ClearArea.get(2, 1), ClearArea.get(2, 2));
+    
+    if( CellCount[1] )
+     {
+      DestroyArea.set(2, 0, 1);
+      DestroyArea.set(2, 1, 1);
+      DestroyArea.set(2, 2, 1);
+     }
+    
+    // topright
+    CellCount[2] = CheckTripleEqual(Comparer, ClearArea.get(4, 0), ClearArea.get(3, 1), ClearArea.get(2, 2));
+    
+    if( CellCount[2] )
+     {
+      DestroyArea.set(4, 0, 1);
+      DestroyArea.set(3, 1, 1);
+      DestroyArea.set(2, 2, 1);
+     }
+    
+    // right
+    CellCount[3] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(3, 2), ClearArea.get(4, 2));
+    
+    if( CellCount[3] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(3, 2, 1);
+      DestroyArea.set(4, 2, 1);
+     }
+        
+    // downright
+    CellCount[4] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(3, 3), ClearArea.get(4, 4));
+    
+    if( CellCount[4] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(3, 3, 1);
+      DestroyArea.set(4, 4, 1);
+     }        
+        
+    // down
+    CellCount[5] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(2, 3), ClearArea.get(2, 4));
+    
+    if( CellCount[5] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(2, 3, 1);
+      DestroyArea.set(2, 4, 1);
+     }
+        
+    // downleft
+    CellCount[6] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(1, 3), ClearArea.get(0, 4));
+    
+    if( CellCount[6] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(1, 3, 1);
+      DestroyArea.set(0, 4, 1);
+     }
+        
+    // left
+    CellCount[7] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(1, 2), ClearArea.get(0, 2));
+    
+    if( CellCount[7] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(1, 2, 1);
+      DestroyArea.set(0, 2, 1);
+     }
+        
+            X3 = 0;
+            for( X2 = X - 2; X2 <= X + 2; X2++ )
+             {
+               Y3 = 0;
+             for( Y2 = Y - 2; Y2 <= Y + 2; Y2++ )
+              {   
+                 if( DestroyArea.get(X3, Y3))
+                   DeletePlayFieldptr.set(X2, Y2, 1);
+                 
+               Y3 = Y3 + 1;
+              }
+               X3 = X3 + 1;
+             }
+   
+         }
+                 
+         
+         for( i = 0; i <= 7; i++ )
+          {
+           if( CellCount[i] )
+             ComboCount = ComboCount + 1;
+          }
+    
+/*         
+         If ComboCount > 0 Then
+           ExitFlag = 1
+           PausePlayAnimationStateFlag = 1
+           Exit For
+         End If
+*/      
+        }
+      
+      }
+      
+      //If ExitFlag Then Exit For
+    }
+    
+    
+    for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+     for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+        if( DeletePlayFieldptr.get(X, Y))
+           StaticPlayFieldptr.set(X, Y, 0);
+    
+          if( ComboCount > 0 )
+            PausePlayAnimationStateFlag = 1;
+    
+    return ComboCount;    
+}
+//=============================================================================
+function TimeDelay()
+{
+  var ReturnValue = 0;
+  
+  TimeDelayCounter = TimeDelayCounter + 1;
+  
+  if( TimeDelayCounter >= TIME_DELAY_COUNTER_MAX )
+    {
+     TimeDelayCounter = 0;
+     ReturnValue = 1;
+    }  
+  return ReturnValue;
+}
+//=============================================================================
+function DisplayGameInfo()
+{
+
+ var W, H, Dstr;
+ 
+ W = CellWidthPixels;
+ H = CellHeightPixels;
+
+         switch( DifficultyLevel )
+          {
+          case EASY_LEVEL:
+             Dstr = " E";
+             break;
+          case NORMAL_LEVEL:
+             Dstr = " ";
+             break;
+          case HARD_LEVEL:
+             Dstr = " H";
+             break;
+          } 
+ 
+ DrawText("High Score", RIGHT_WALL_X * W + 7 * W, H * 1 );
+ DrawText(HighScore, RIGHT_WALL_X * W + 7 * W, H * 2 );
+ 
+ DrawText("Current Score", RIGHT_WALL_X * W + 7 * W, H * 3 );
+ DrawText(CurrentScore, RIGHT_WALL_X * W + 7 * W, H * 4 );
+ 
+ DrawText("Current Speed", RIGHT_WALL_X * W + 7 * W, H * 5 );
+ DrawText(CurrentSpeed + Dstr, RIGHT_WALL_X * W + 7 * W, H * 6 );
+ 
+ DrawText("Cleared", RIGHT_WALL_X * W + 7 * W, H * 7 );
+ DrawText(CurrentShapesClearedCount, RIGHT_WALL_X * W + 7 * W, H * 8 );
+ 
+ DrawText("Next", RIGHT_WALL_X * W + 7 * W, H * 9 ); 
+ 
+}
+//=============================================================================
+function DisplayGameInfoNextShape()
+{
+ var NextShape = new Shape();
+ var W, H;
+ 
+ if( NextPieceIndex + 1 > 0 )
+  { 
+    W = CellTextWidthPixels;
+    H = CellTextHeightPixels;
+ 
+    NextShape.Cell = new Shape();
+    CopyShape( NextShape, NextPiece );
+    NextShape.X = RIGHT_WALL_X + 2;
+    NextShape.Y = 10;
+
+    //DrawShape2OutputPlayField( NextShape );
+  }
+}
+//=============================================================================
+function Add2ScorePillarsClear( PillarCount, ChainCount )
+{
+ var ScoreResult;
+ 
+ ScoreResult = 0;
+ 
+ if( 0 < PillarCount && PillarCount <= 3 )
+   {
+    ScoreResult = ScoreResult + PillarCount * CLEAR_LINE_POINTS + PillarCount * LINE_COUNT_BONUS_POINTS;
+    PlaySound(3);
+   }
+ else
+ if( PillarCount >= 4 )
+   {
+    ScoreResult = ScoreResult + PillarCount * CLEAR_LINE_POINTS + PillarCount * LINE_COUNT_BONUS_POINTS + SHAPE_BONUS_POINTS;
+    PlaySound(3);
+   }
+  
+ if( ChainCount > 1 )
+   ScoreResult = ScoreResult + 1000;
+ 
+          switch( DifficultyLevel )
+           {
+            case EASY_LEVEL:
+              ScoreResult = ScoreResult * 0.5;
+              break;
+            case NORMAL_LEVEL:
+              // ** do nothing **
+              break;
+            case HARD_LEVEL:
+              ScoreResult = ScoreResult * 2;
+              break;
+            default:
+              break;
+           }
+          
+ CurrentScore = Math.floor(CurrentScore + ScoreResult);
+    
+ CurrentShapesClearedCount = CurrentShapesClearedCount + PillarCount;
+ HundredShapesClearedLimitCount = HundredShapesClearedLimitCount + PillarCount;
+ 
+}
+//=============================================================================
+function Add2ScoreHitBottom()
+{   
+  CurrentScore = CurrentScore + HIT_BOTTOM_POINTS;
+}
+//=============================================================================
+function UserInteraction2()
+{
+  var i;
+ 
+  GeneralKeyDelayCounter = GeneralKeyDelayCounter + 1;
+  
+if( GeneralKeyDelayCounter >= GeneralKeyDelayCounterMax )
+{
+   if( CurrentGameState == GAME_STATE_BEGIN || CurrentGameState == GAME_STATE_GAME_OVER )
+    {
+     GeneralKeyDelayCounter = 0;
+    
+    for( i = 0; i <= 9; i++ )
+       if( Option_Flag_List[i] )
+         CurrentSpeed = i;
+
+     if( Difficulty_Change_Flag )
+       {       
+        switch( DifficultyLevel )
+         {
+          case EASY_LEVEL:
+             DifficultyLevel = NORMAL_LEVEL;
+             break;
+          case NORMAL_LEVEL:
+             DifficultyLevel = HARD_LEVEL;
+             break;
+          case HARD_LEVEL:
+             DifficultyLevel = EASY_LEVEL;
+             break;
+          default:
+             DifficultyLevel = NORMAL_LEVEL;
+             break;
+         }
+       }
+     else 
+        Difficulty_Change_Flag = 0;     
+                 
+     if( Option_Running_Flag )
+       { 
+        CurrentGameState = GAME_STATE_RUNNING;
+        ClearStaticPlayField();
+        ClearOutputPlayField();
+        StartRandomShapeFlag = 1;
+        CurrentScore = 0;
+        CurrentLineCount = 0;
+        HundredLinesLimitCount = 0;
+      }
+     
+     FallSpeedIncrement = CurrentSpeed;
+    } 
+   else
+   if( CurrentGameState == GAME_STATE_RUNNING )
+    {     
+     if( Option_Paused_Flag )
+       {
+        Option_Paused_Flag = 0;
+        CurrentGameState = GAME_STATE_PAUSED;
+       }
+    }
+   else
+   if( CurrentGameState == GAME_STATE_PAUSED )
+    {
+     if( Option_Paused_Flag )
+       {
+        Option_Paused_Flag = 0;
+        CurrentGameState = GAME_STATE_RUNNING;
+       }
+    }
+}
+}
+//=============================================================================
+function DisplayGameStateMessage(GameState)
+{
+  //Bitmap_SetTextForeColor GameTextForeColor.r, GameTextForeColor.g, GameTextForeColor.b
+  //Bitmap_SetTextBackColor ColorList(0).r, ColorList(0).g, ColorList(0).b
+
+ var W, H;
+ 
+ W = CellWidthPixels;
+ H = CellHeightPixels;
+ 
+  switch(GameState)
+   {
+     case GAME_STATE_BEGIN:
+          DrawText( "Welcome  ", LEFT_WALL_X * W + 2 * W, H * 6 );
+          DrawText( "  to     ", LEFT_WALL_X * W + 2 * W, H * 7 );
+          DrawText( " Pillars ", LEFT_WALL_X * W + 2 * W, H * 8 );
+          break;          
+
+     case GAME_STATE_PAUSED:
+          DrawText( " Paused  ", LEFT_WALL_X * W + 2 * W, H * 6 );
+          break;
+          
+     case GAME_STATE_GAME_OVER:
+          DrawText( "  Game   ", LEFT_WALL_X * W + 2 * W, H * 6 );
+          DrawText( "  Over   ", LEFT_WALL_X * W + 2 * W, H * 7 );
+          break;
+     default:
+        break;
+   };  
+}
+//=============================================================================
+function IncreaseSpeed()
+{
+   if( HundredLinesLimitCount >= 100 )
+     {
+       CurrentSpeed = CurrentSpeed + 1;
+       FallSpeedIncrement = CurrentSpeed;
+       HundredLinesLimitCount = 0;
+       BackGroundPictureIndex = Rand(9, 14);
+       PlaySound(1);
+     }
+}
+//=============================================================================
+function ShiftBlocksDown()
+{
+  var Y, X, i, CellStatic, CellStaticUpper, CellDelete;
+
+for( i = 1; i <= 10; i++ )
+  for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
+    for( Y = PLAYFIELD_HEIGHT - 2; Y >= 1; Y-- )
+     { 
+       CellStatic = GetArray( StaticPlayField, PLAYFIELD_WIDTH, X, Y );
+       CellStaticUpper = GetArray( StaticPlayField, PLAYFIELD_WIDTH, X, Y-1 );
+       CellDelete = GetArray( DeletePlayField, PLAYFIELD_WIDTH, X, Y );
+     
+       if( CellStatic == 0 && CellDelete == 0 )
+         {          
+          SetArray( StaticPlayField, PLAYFIELD_WIDTH, X, Y, CellStaticUpper );
+          SetArray( StaticPlayField, PLAYFIELD_WIDTH, X, Y-1, 0 );
+         }
+     }
+}
+//=============================================================================
+function AnimationDelay()
+{
+   var ReturnValue = 0;
+   
+   RefreshDelayCounter = RefreshDelayCounter + 1;
+   
+   if( RefreshDelayCounter > RefreshDelayCounterMax )
+     {
+      PausePlayAnimationStateFlag = 0;
+      RefreshDelayCounter = 0;
+      ReturnValue = 1;
+     }   
+   return ReturnValue;
+}
+//=============================================================================
+function MainLoop()
+{
+ var RefreshFlag;
+ var XOld, YOld;
+ var LinesFormedCount;
+ RefreshFlag = 0;
+
+if( ImagesLoadedFlag )
+{
+MainContext.save(); 
+        
+if( CurrentGameState == GAME_STATE_BEGIN )
+{
+  if( TimeDelay() )
+   {
+    DrawWallsStaticPlayField();
+    CopyStaticPlayField2OutputPlayField();
+    DisplayGameInfoNextShape();    
+     
+    DrawOutputPlayField2BufferText();   
+    DisplayGameInfo();     
+    DisplayGameStateMessage( GAME_STATE_BEGIN );   
+   }
+}  
+else
+if( CurrentGameState == GAME_STATE_GAME_OVER )
+{
+ if( TimeDelay() )
+  {
+    DrawWallsStaticPlayField();
+    CopyStaticPlayField2OutputPlayField();
+    DisplayGameInfoNextShape();
+    DrawOutputPlayField2BufferText();
+    DisplayGameInfo();
+    DisplayGameStateMessage( GAME_STATE_GAME_OVER );
+    
+    if( CurrentScore > HighScore )
+      {
+       HighScore = CurrentScore;
+       DoHighScore(2);
+      }
+  }
+}
+else
+if( CurrentGameState == GAME_STATE_PAUSED )
+{
+
+ if( TimeDelay() )
+   {
+    DrawWallsStaticPlayField();
+    CopyStaticPlayField2OutputPlayField();
+    DisplayGameInfoNextShape();
+    DrawShape2OutputPlayField(CurrentShape);
+    DrawOutputPlayField2BufferText();
+    DisplayGameInfo();
+    DisplayGameStateMessage( GAME_STATE_PAUSED );
+   }
+} 
+else
+if( CurrentGameState == GAME_STATE_RUNNING )
+{    
+ if( InstantDropFlag )
+  {
+   InstantDrop();
+   InstantDropFlag = 0;
+  }
+
+  XOld = CurrentShape.X;
+  YOld = CurrentShape.Y;
+
+  if( DropShape() || KeyPressFlag )
+    RefreshFlag = 1;
+
+  if( CheckShapeCollideStaticPlayField() )
+    {
+   
+     CurrentShape.X = XOld;
+     CurrentShape.Y = YOld;
+
+     PasteShape2StaticPlayField();
+  
+     StartRandomShapeFlag = 1;
+   
+     Add2ScoreHitBottom();
+   
+     LinesFormedCount = CheckFormLines();
+     Add2ScorePillarsClear(LinesFormedCount);
+     IncreaseSpeed();
+   }
+
+  if( StartRandomShapeFlag )
+   {
+     StartRandomShapeFlag = 0;
+     StartRandomShape();
+   
+     if( CheckShapeCollideStaticPlayField() )  
+      CurrentGameState = GAME_STATE_GAME_OVER;   
+   }
+
+   if( AnimationDelay() )
+    {
+      RefreshFlag = 1;
+      ClearDeletePlayField();
+    }
+   
+   DrawWallsStaticPlayField();
+   CopyStaticPlayField2OutputPlayField();
+    
+   DrawShape2OutputPlayField( CurrentShape );
+
+   DisplayGameInfoNextShape();
+
+   if( RefreshFlag )
+    {
+      ShiftBlocksDown();
+      DrawOutputPlayField2BufferText();
+      DisplayGameInfo();
+           
+      LinesFormedCount = CheckFormLines();
+      
+      if( LinesFormedCount > 0 )
+        {
+         CellClearChainCount = CellClearChainCount + 1;      
+         Add2ScorePillarsClear( LinesFormedCount, CellClearChainCount );
+        }
+        
+      IncreaseSpeed();
+    }
+    
+   ClearOutputPlayField();
+
+  MainContext.restore();
+
+  
+}
+
+}
+
+setTimeout("MainLoop()", 20); 
+
+}
+//=============================================================================
+//=============================================================================
+//=============================================================================
+//=============================================================================
+//=============================================================================
+//=============================================================================
+
+MainContext.font = "bold 16pt Arial";
+MainContext.fillStyle = "rgba(255,255,255,1)"; 
+MainContext.lineWidth = 2;
+MainContext.strokeStyle = "black"; 
+    
+InitializeShapeShapes();
+CurrentGameState = GAME_STATE_BEGIN;
+InitGame();
+
+ClearOutputPlayField();
+ClearStaticPlayField();
+MainLoop();
+  
+</script>
+
+</body>
+</html>
