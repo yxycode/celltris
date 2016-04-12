@@ -26,6 +26,7 @@ MainCanvas.style.height= "400px";
 */
 var CANVAS_WIDTH = 870;
 var CANVAS_HEIGHT = 406;
+
 //=============================================================================
 function debugout( msg, index )
 {
@@ -85,7 +86,7 @@ var DeletePlayField = new Array(PLAYFIELD_WIDTH*PLAYFIELD_HEIGHT);
 // * * * for custom pit dimensions * * *
 var LEFT_WALL_X  = Math.floor(PLAYFIELD_WIDTH / 2 - 6);
 var RIGHT_WALL_X = LEFT_WALL_X + 7;
-var WALL_CELL_VALUE = 8;
+var WALL_CELL_VALUE = 11;
 
 var SHAPE_START_X = Math.floor(PLAYFIELD_WIDTH / 2 - MAX_SHAPE_WIDTH / 2 - 1);
 
@@ -148,7 +149,7 @@ var DropCounter = 0, DropCounterMax = 0;
 var GeneralKeyDelayCounter = 0;
 var GeneralKeyDelayCounterMax = 0;
 
-var PausePlayAnimationStateFlag = 0;
+var DelayAnimationFlag = 0;
 var RefreshDelayCounter = 0;
 var RefreshDelayCounterMax = 0;
 var CellClearChainCount = 0;
@@ -521,9 +522,27 @@ function DrawText( str, X, Y )
    MainContext.fillText(str, X, Y);    
 }
 //=============================================================================
+function DrawBackGroundOverlay()
+{
+  var X, Y;
+  
+  for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
+   for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+       DrawCell0( 0, X * CellWidthPixels, Y * CellHeightPixels);
+}
+//============================================================================= 
+function DrawCell0( PictureIndex, X, Y )
+{
+  var sourcex = CellWidthPixels * PictureIndex;
+  var sourcey = 0;
+  
+  MainContext.drawImage( TheImageList[0], sourcex, sourcey, CellWidthPixels, CellHeightPixels, 
+     X, Y, CellWidthPixels, CellHeightPixels );
+}
+//=============================================================================
 function PlaySound( Index )
 {  
- if( navigator.userAgent.indexOf("Chrome") == -1 )
+ //if( navigator.userAgent.indexOf("Chrome") == -1 )
    {
      TheSoundList[Index].pause();
      TheSoundList[Index].play();
@@ -575,9 +594,9 @@ function InitGame()
     CurrentPiece.Cell = new Array( MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT );
     CurrentShape.Cell = new Array( MAX_SHAPE_WIDTH * MAX_SHAPE_HEIGHT );
 
-    PausePlayAnimationStateFlag = 0;
+    DelayAnimationFlag = 0;
     RefreshDelayCounter = 0;
-    RefreshDelayCounterMax = 10;
+    RefreshDelayCounterMax = 30;
     
     DifficultyLevel = NORMAL_LEVEL;
     
@@ -626,6 +645,7 @@ function DrawBackGround()
  else
     DrawCell( Index, 0, 0 );
  
+ DrawBackGroundOverlay();
 }
 //=============================================================================
 function DrawOutputPlayField2BufferText()
@@ -647,11 +667,11 @@ function DrawOutputPlayField2BufferText()
          if( ShowBackGroundFlag == 1 && Cell == 0 )
             ; // null statement
          else
-            DrawCell( Cell, X2, Y2 );
+            DrawCell0( Cell, X2, Y2 );
             
          Cell = GetArray( DeletePlayField, PLAYFIELD_WIDTH, X, Y );
          if( Cell > 0 )
-             DrawCell( 8, X2, Y2 );
+             DrawCell0( WALL_CELL_VALUE, X2, Y2 );
       }
 
    }
@@ -979,8 +999,8 @@ function CheckTripleEqual(Comparer, Compared1, Compared2, Compared3)
 //=============================================================================
 function CheckFormLines()
 {
-   var ClearArea = new Array2D(4,4);
-   var DestroyArea = new Array2D(4,4);
+   var ClearArea = new Array2D(5,5);
+   var DestroyArea = new Array2D(5,5);
    var StaticPlayFieldptr = new Array2D( PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT );
    var DeletePlayFieldptr = new Array2D( PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT );
    StaticPlayFieldptr.setdata( StaticPlayField );   
@@ -1140,18 +1160,11 @@ function CheckFormLines()
              ComboCount = ComboCount + 1;
           }
     
-/*         
-         If ComboCount > 0 Then
-           ExitFlag = 1
-           PausePlayAnimationStateFlag = 1
-           Exit For
-         End If
-*/      
+     
         }
       
       }
-      
-      //If ExitFlag Then Exit For
+
     }
     
     
@@ -1161,7 +1174,7 @@ function CheckFormLines()
            StaticPlayFieldptr.set(X, Y, 0);
     
           if( ComboCount > 0 )
-            PausePlayAnimationStateFlag = 1;
+            DelayAnimationFlag = 1;
     
     return ComboCount;    
 }
@@ -1370,7 +1383,7 @@ function DisplayGameStateMessage(GameState)
      case GAME_STATE_BEGIN:
           DrawText( "Welcome  ", LEFT_WALL_X * W + 2 * W, H * 6 );
           DrawText( "  to     ", LEFT_WALL_X * W + 2 * W, H * 7 );
-          DrawText( " Pillars ", LEFT_WALL_X * W + 2 * W, H * 8 );
+          DrawText( "Blob Blob", LEFT_WALL_X * W + 2 * W, H * 8 );
           break;          
 
      case GAME_STATE_PAUSED:
@@ -1418,7 +1431,7 @@ for( i = 1; i <= 10; i++ )
      }
 }
 //=============================================================================
-function AnimationDelay()
+function DelayAnimation()
 {
    var ReturnValue = 0;
    
@@ -1426,7 +1439,7 @@ function AnimationDelay()
    
    if( RefreshDelayCounter > RefreshDelayCounterMax )
      {
-      PausePlayAnimationStateFlag = 0;
+      DelayAnimationFlag = 0;
       RefreshDelayCounter = 0;
       ReturnValue = 1;
      }   
@@ -1503,7 +1516,7 @@ if( CurrentGameState == GAME_STATE_RUNNING )
   XOld = CurrentShape.X;
   YOld = CurrentShape.Y;
 
-  if( DropShape() || KeyPressFlag )
+  if(( DropShape() || KeyPressFlag ) )
     RefreshFlag = 1;
 
   if( CheckShapeCollideStaticPlayField() )
@@ -1532,7 +1545,8 @@ if( CurrentGameState == GAME_STATE_RUNNING )
       CurrentGameState = GAME_STATE_GAME_OVER;   
    }
 
-   if( AnimationDelay() )
+  if( DelayAnimationFlag == 1 )
+   if( DelayAnimation() )
     {
       RefreshFlag = 1;
       ClearDeletePlayField();

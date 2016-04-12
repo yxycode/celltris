@@ -10,7 +10,7 @@
 </p>
 -->
 <center>
-<canvas id="MainCanvas" width="1015px" height="493px">
+<canvas id="MainCanvas" width="1015px" height="638px">
 Error: Your browser does not support HTML5 Canvas!
 </canvas>
 </center>
@@ -25,8 +25,7 @@ MainContext.scale(1.0,1.0);
 MainCanvas.style.width = "600px";
 MainCanvas.style.height= "400px";
 */
-var CANVAS_WIDTH = 1015;
-var CANVAS_HEIGHT = 493;
+
 //=============================================================================
 function debugout( msg, index )
 {
@@ -37,7 +36,7 @@ function debugout( msg, index )
 
 var MAX_SHAPE_WIDTH  = 5;
 var MAX_SHAPE_HEIGHT = 5;
-var MAX_TETRAD_TYPES = 7;
+var MAX_TETRAD_TYPES = 7 + 3;
 
 // T, Z, S, J, L, I, O
 // original pit dimensions 9x16
@@ -51,9 +50,12 @@ var TETRAD_I  = 6;
 var TETRAD_O  = 7;
 
 var PLAYFIELD_WIDTH = 35;
-var PLAYFIELD_HEIGHT = 17;
+var PLAYFIELD_HEIGHT = 17 + 5;
  
 var MAX_LINES_FORMED_COUNT = 5;
+
+var CANVAS_WIDTH = PLAYFIELD_WIDTH * 29; //1015;
+var CANVAS_HEIGHT = PLAYFIELD_HEIGHT * 29; //493;
 
 //=============================================================================
 
@@ -73,9 +75,9 @@ var StaticPlayField = new Array(PLAYFIELD_WIDTH*PLAYFIELD_HEIGHT);
 var OutputPlayField = new Array(PLAYFIELD_WIDTH*PLAYFIELD_HEIGHT);
 
 // * * * for custom pit dimensions * * *
-var LEFT_WALL_X  = Math.floor(PLAYFIELD_WIDTH / 2 - 8);
-var RIGHT_WALL_X = LEFT_WALL_X + 10;
-var WALL_CELL_VALUE = 8;
+var LEFT_WALL_X  = Math.floor(PLAYFIELD_WIDTH / 2 - 8) - 2;
+var RIGHT_WALL_X = LEFT_WALL_X + 10 + 2;
+var WALL_CELL_VALUE = 11; //8;
 
 var TETRAD_START_X = PLAYFIELD_WIDTH / 2 - MAX_SHAPE_WIDTH / 2 - 2;
 
@@ -145,6 +147,10 @@ var CellHeightPixels = 0;
 
 var CellTextWidthPixels = 0;
 var CellTextHeightPixels = 0; 
+
+var FormLinesYArray = new Array(MAX_LINES_FORMED_COUNT + 1);  //1 To MAX_LINES_FORMED_COUNT
+var FormLinesYCount = 0;
+var AnimateClearedLinesCounter = 0;
 
 //=============================================================================
 function DoKeyDown(dEvent)
@@ -322,6 +328,24 @@ SetArray( Str, MAX_TETRAD_TYPES, 6, 1, ".@@.." );
 SetArray( Str, MAX_TETRAD_TYPES, 6, 2, ".@@.." );
 SetArray( Str, MAX_TETRAD_TYPES, 6, 3, "....." );
 SetArray( Str, MAX_TETRAD_TYPES, 6, 4, "....." );
+
+SetArray( Str, MAX_TETRAD_TYPES, 7, 0, "..@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 7, 1, ".@@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 7, 2, ".@@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 7, 3, "....." );
+SetArray( Str, MAX_TETRAD_TYPES, 7, 4, "....." );
+
+SetArray( Str, MAX_TETRAD_TYPES, 8, 0, "....." );
+SetArray( Str, MAX_TETRAD_TYPES, 8, 1, "..@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 8, 2, ".@@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 8, 3, "..@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 8, 4, "..@.." );
+
+SetArray( Str, MAX_TETRAD_TYPES, 9, 0, "....." );
+SetArray( Str, MAX_TETRAD_TYPES, 9, 1, ".@@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 9, 2, "..@.." );
+SetArray( Str, MAX_TETRAD_TYPES, 9, 3, "..@@." );
+SetArray( Str, MAX_TETRAD_TYPES, 9, 4, "....." );
    
 for( T = 0; T <= MAX_TETRAD_TYPES - 1; T++ )
   { 
@@ -463,6 +487,15 @@ function DrawCell( PictureIndex, X, Y )
   MainContext.drawImage( TheImageList[PictureIndex], X, Y );
 }
 //=============================================================================
+function DrawCell0( PictureIndex, X, Y )
+{
+  var sourcex = CellWidthPixels * PictureIndex;
+  var sourcey = 0;
+  
+  MainContext.drawImage( TheImageList[0], sourcex, sourcey, CellWidthPixels, CellHeightPixels, 
+     X, Y, CellWidthPixels, CellHeightPixels );
+}
+//=============================================================================
 function DrawText( str, X, Y )
 {
    MainContext.strokeText(str, X, Y);  
@@ -471,7 +504,7 @@ function DrawText( str, X, Y )
 //=============================================================================
 function PlaySound( Index )
 {  
- if( navigator.userAgent.indexOf("Chrome") == -1 )
+ //if( navigator.userAgent.indexOf("Chrome") == -1 )
    {
      TheSoundList[Index].pause();
      TheSoundList[Index].play();
@@ -561,8 +594,18 @@ function DrawBackGround()
  else
     DrawCell( Index, 0, 0 );
  
+ DrawBackGroundOverlay();
 }
 //=============================================================================
+function DrawBackGroundOverlay()
+{
+  var X, Y;
+  
+  for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
+   for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+       DrawCell0( 0, X * CellWidthPixels, Y * CellHeightPixels);
+}
+//============================================================================= 
 function DrawOutputPlayField2BufferText()
 {
   var X, Y, Cell, X2, Y2;
@@ -582,7 +625,7 @@ function DrawOutputPlayField2BufferText()
          if( ShowBackGroundFlag == 1 && Cell == 0 )
             ; // null statement
          else
-            DrawCell( Cell, X2, Y2 );
+            DrawCell0( Cell, X2, Y2 );
       }
    }
 }
@@ -830,9 +873,8 @@ if( CurrentGameState == GAME_STATE_RUNNING )
 
 }
 //=============================================================================
-function CheckFormLines()
-{
-  var LinesY = new Array(MAX_LINES_FORMED_COUNT + 1);  //1 To MAX_LINES_FORMED_COUNT
+function CheckFormLines( LinesY )
+{  
   var LinesYCount;
   var X, Y, i, CellCount, Cell;
 
@@ -855,8 +897,12 @@ for( Y = PLAYFIELD_HEIGHT - 2; Y >= 1; Y-- )
          LinesYCount = LinesYCount + 1;
          LinesY[LinesYCount] = Y;
        }
-      
+}     
+    return LinesYCount;
 }
+//=============================================================================
+function ShiftBlocksDown( LinesY, LinesYCount )
+{
     for( i = 1; i <= LinesYCount; i++ )
       for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
          SetArray( StaticPlayField, PLAYFIELD_WIDTH, X, LinesY[i], 0 );
@@ -883,8 +929,7 @@ for( i = 1; i <= LinesYCount; i++ )
            }
         }
       
-    }
-      return LinesYCount;
+    }      
 }
 //=============================================================================
 function TimeDelay()
@@ -1063,11 +1108,35 @@ function IncreaseSpeed()
      }
 }
 //=============================================================================
+function AnimateClearedLines( LinesYArray, LinesYCount )
+{
+  var X, Y, i, imageindex;
+
+if( AnimateClearedLinesCounter > 0 )
+{
+ if( AnimateClearedLinesCounter % 3 == 0 )
+  for( i = 1; i <= LinesYCount; i++ )
+  {
+    Y = LinesYArray[i];
+    
+    for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
+    {
+       //imageindex = Rand( 1, MAX_TETRAD_TYPES );
+       imageindex = 0;
+       DrawCell0( imageindex, X * CellWidthPixels, Y * CellHeightPixels);
+    }
+       
+  }
+
+ AnimateClearedLinesCounter--;  
+}
+
+}
+//=============================================================================
 function MainLoop()
 {
  var RefreshFlag;
  var XOld, YOld;
- var LinesFormedCount;
  RefreshFlag = 0;
 
 if( ImagesLoadedFlag )
@@ -1124,6 +1193,8 @@ if( CurrentGameState == GAME_STATE_PAUSED )
 else
 if( CurrentGameState == GAME_STATE_RUNNING )
 {    
+if( AnimateClearedLinesCounter <= 0 )
+{
  if( InstantDropFlag )
   {
    InstantDrop();
@@ -1148,8 +1219,13 @@ if( CurrentGameState == GAME_STATE_RUNNING )
    
      Add2ScoreHitBottom();
    
-     LinesFormedCount = CheckFormLines();
-     Add2ScoreLinesClear(LinesFormedCount);
+     if( AnimateClearedLinesCounter == 0 )
+     {
+         FormLinesYCount = CheckFormLines( FormLinesYArray );
+     
+         if( FormLinesYCount >= 1 )
+            AnimateClearedLinesCounter = 10;
+     }
      IncreaseSpeed();
    }
 
@@ -1161,21 +1237,39 @@ if( CurrentGameState == GAME_STATE_RUNNING )
      if( CheckTetradCollideStaticPlayField() )     
       CurrentGameState = GAME_STATE_GAME_OVER;   
    }
-
+}
    DrawWallsStaticPlayField();
    CopyStaticPlayField2OutputPlayField();
     
    DrawTetrad2OutputPlayField( CurrentTetrad );
 
    DisplayGameInfoNextTetrad();
-
+   
+if( AnimateClearedLinesCounter > 0 )
+{
+    DrawOutputPlayField2BufferText();
+    DisplayGameInfo();
+    AnimateClearedLines( FormLinesYArray, FormLinesYCount );   
+    
+  if( AnimateClearedLinesCounter <= 0 )
+  {  
+    ShiftBlocksDown( FormLinesYArray, FormLinesYCount );
+    Add2ScoreLinesClear( FormLinesYCount );
+  }
+}    
    if( RefreshFlag )
     {
       DrawOutputPlayField2BufferText();
       DisplayGameInfo();
-           
-      LinesFormedCount = CheckFormLines();
-      Add2ScoreLinesClear( LinesFormedCount );
+     
+     if( AnimateClearedLinesCounter == 0 )
+     {
+         FormLinesYCount = CheckFormLines( FormLinesYArray );
+     
+         if( FormLinesYCount >= 1 )
+            AnimateClearedLinesCounter = 10;
+     }
+
       IncreaseSpeed();
     }
     
