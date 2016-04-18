@@ -1,0 +1,271 @@
+<html>
+<head>
+</head>
+<body style="color: white; background-color: black; font-size:15px; font-family:fixedsys;" alink="white" link="white" vlink="white" >
+
+<script type="text/javascript" >
+
+//=============================================================================
+
+Array2D.prototype.Data = 0;
+Array2D.prototype.Width = 0;
+Array2D.prototype.Height = 0;
+Array2D.prototype.get = Array2D_Get;
+Array2D.prototype.set = Array2D_Set;
+Array2D.prototype.setdata = Array2D_SetData;
+Array2D.prototype.dump = Array2D_Dump;
+
+//-----------------------------------------------------------------------------
+function Array2D( array_width, array_height ) 
+{
+  this.Width = array_width;
+  this.Height = array_height;
+  this.Data = new Array( array_width * array_height );
+  
+  var i;
+  for( i = 0; i < array_width * array_height; i++ )
+       this.Data[i] = 0;
+};
+//-----------------------------------------------------------------------------
+function Array2D_Get( x, y )
+{
+  return this.Data[ y * this.Width + x ];
+}
+//-----------------------------------------------------------------------------
+function Array2D_Set( x, y, value )
+{
+  this.Data[ y * this.Width + x ] = value;
+}
+//-----------------------------------------------------------------------------
+function Array2D_SetData( thedata )
+{
+  this.Data = thedata;
+}
+//-----------------------------------------------------------------------------
+function Array2D_Dump()
+{
+  var str = '', x, y;
+  
+  for( y = 0; y < this.Height; y++ )
+   {
+    for( x = 0; x < this.Width; x++ )
+        str += this.get( x, y ) + ",";
+    str += '<br>';   
+   }
+  return str;
+}
+//=============================================================================
+function CheckTripleEqual(Comparer, Compared1, Compared2, Compared3)
+{
+   if( Compared1 == Comparer && Compared2 == Comparer && Compared3 == Comparer )
+      return 1;
+   else
+      return 0;
+}
+//=============================================================================
+function CheckFormLines()
+{
+   var ClearArea = new Array2D(4,4);
+   var DestroyArea = new Array2D(4,4);
+   var StaticPlayFieldptr = new Array2D( PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT );
+   StaticPlayFieldptr.setdata( StaticPlayField );   
+   
+   var Comparer = 0;
+   var CellCount = new Array(7);
+   var X, Y, X2, Y2, X3, Y3, ComboCount, i;
+    
+    ComboCount = 0;
+
+    for( Y = PLAYFIELD_HEIGHT - 2; Y >= 1; Y-- )
+    {
+      for( X = LEFT_WALL_X + 1; X <= RIGHT_WALL_X - 1; X++ )
+       {         
+         if( StaticPlayFieldptr.get(X, Y) > 0 )
+           {  
+            for( Y3 = 0; Y3 <= 4; Y3++ )
+              for( X3 = 0; X3 <= 4; X3++ )
+               {
+                ClearArea.set( X3, Y3, 0 );
+                DestroyArea.set( X3, Y3, 0 );
+               }
+             
+            X3 = 0;
+               
+            for( X2 = X - 2; X2 <= X + 2; X2++ )
+             {
+               Y3 = 0;
+             for( Y2 = Y - 2; Y <= Y + 2; Y2++ )
+              {
+                if( 0 <= X2 && X2 <= PLAYFIELD_WIDTH - 1 && 0 <= Y2 && Y2 <= PLAYFIELD_HEIGHT - 1 )
+                  {
+                   if( StaticPlayFieldptr.get(X2, Y2) != WALL_CELL_VALUE && StaticPlayFieldptr.get(X2, Y2) > 0 )
+                    ClearArea.set(X3, Y3, StaticPlayFieldptr.get(X2, Y2));
+                   else
+                    ClearArea.set(X3, Y3, 0);
+                  }
+                
+                Y3 = Y3 + 1;
+               }
+             X3 = X3 + 1;
+            }
+/*            
+    # # # # #
+    # # # # #
+    # # . # #
+    # # # # #
+    # # # # #
+*/    
+    
+    Comparer = ClearArea(2, 2).get();
+    
+    if( Comparer > 0 )
+     {
+    
+    // topleft
+    CellCount[0] = CheckTripleEqual(Comparer, ClearArea.get(0, 0), ClearArea.get(1, 1), ClearArea.get(2, 2));
+    
+    if( CellCount[0] )
+     {
+      DestroyArea.set(0, 0, 1);
+      DestroyArea.set(1, 1, 1);
+      DestroyArea.set(2, 2, 1);
+     }
+    
+    // top
+    CellCount[1] = CheckTripleEqual(Comparer, ClearArea.get(2, 0), ClearArea.get(2, 1), ClearArea.get(2, 2));
+    
+    if( CellCount[1] )
+     {
+      DestroyArea.set(2, 0, 1);
+      DestroyArea.set(2, 1, 1);
+      DestroyArea.set(2, 2, 1);
+     }
+    
+    // topright
+    CellCount[2] = CheckTripleEqual(Comparer, ClearArea.get(4, 0), ClearArea.get(3, 1), ClearArea.get(2, 2));
+    
+    if( CellCount[2] )
+     {
+      DestroyArea.set(4, 0, 1);
+      DestroyArea.set(3, 1, 1);
+      DestroyArea.set(2, 2, 1);
+     }
+    
+    // right
+    CellCount[3] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(3, 2), ClearArea.get(4, 2));
+    
+    if( CellCount[3] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(3, 2, 1);
+      DestroyArea.set(4, 2, 1);
+     }
+        
+    // downright
+    CellCount[4] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(3, 3), ClearArea.get(4, 4));
+    
+    if( CellCount[4] )
+     {
+      DestroyArea.set(2, 2, 1);
+      DestroyArea.set(3, 3, 1);
+      DestroyArea.set(4, 4, 1);
+     }        
+        
+    // down
+    CellCount[5] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(2, 3), ClearArea.get(2, 4));
+    
+    if( CellCount[5] )
+     {
+      DestroyArea(2, 2, 1);
+      DestroyArea(2, 3, 1);
+      DestroyArea(2, 4, 1);
+     }
+        
+    // downleft
+    CellCount[6] = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(1, 3), ClearArea.get(0, 4));
+    
+    if( CellCount[6] )
+     {
+      DestroyArea(2, 2, 1);
+      DestroyArea(1, 3, 1);
+      DestroyArea(0, 4, 1);
+     }
+        
+    // left
+    CellCount(7) = CheckTripleEqual(Comparer, ClearArea.get(2, 2), ClearArea.get(1, 2), ClearArea.get(0, 2));
+    
+    if( CellCount[7] )
+     {
+      DestroyArea(2, 2, 1);
+      DestroyArea(1, 2, 1);
+      DestroyArea(0, 2, 1);
+     }
+        
+            X3 = 0;
+            for( X2 = X - 2; X2 <= X + 2; X2++ )
+             {
+               Y3 = 0;
+             for( Y2 = Y - 2; Y2 <= Y + 2; Y2++ )
+              {   
+                 if( DestroyArea.get(X3, Y3))
+                   DeletePlayField.set(X2, Y2, 1);
+                 
+               Y3 = Y3 + 1;
+              }
+               X3 = X3 + 1;
+             }
+   
+         }
+                 
+         
+         for( i = 0; i <= 7; i++ )
+          {
+           if( CellCount[i] )
+             ComboCount = ComboCount + 1;
+          }
+    
+/*         
+         If ComboCount > 0 Then
+           ExitFlag = 1
+           PausePlayAnimationStateFlag = 1
+           Exit For
+         End If
+*/      
+        }
+      
+      }
+      
+      //If ExitFlag Then Exit For
+    }
+    
+    
+    for( Y = 0; Y <= PLAYFIELD_HEIGHT - 1; Y++ )
+     for( X = 0; X <= PLAYFIELD_WIDTH - 1; X++ )
+        if( DeletePlayField.get(X, Y))
+           StaticPlayFieldptr.set(X, Y, 0);
+    
+          if( ComboCount > 0 )
+            PausePlayAnimationStateFlag = 1;
+    
+    return ComboCount;    
+}
+//=============================================================================
+
+var box = new Array2D(4,4);
+box.set(0,0,"#");
+box.set(0,1,1);
+box.set(0,2,2);
+box.set(0,3,3);
+box.set(0,0,"#");
+box.set(1,0,1);
+box.set(2,0,2);
+box.set(3,0,3);
+box.set(3,0,"!");
+box.set(3,1,"@");
+box.set(3,2,"#");
+box.set(3,3,"$")
+
+document.write( box.dump());
+
+</script>
+</html>

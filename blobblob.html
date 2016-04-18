@@ -424,35 +424,36 @@ var MAX_IMAGES = 0;
 
 function LoadMedia()
 {
-  var ImageNameList = "block0.png,block1.png,block2.png,block3.png,block4.png,block5.png,block6.png,block7.png,block8.png,";
-  ImageNameList += "LightGrey-03.png,Brown-02.png,Brown-09.png,Brown-10.png,clouds.png,outerspace.png";
-  var SoundNameList = "Crash1.wav,NewLevel.wav,Rotate.wav,RowAnim04.wav";
+  var SoundFileList = "Crash1.wav,NewLevel.wav,Rotate.wav,RowAnim04.wav";
   
-  var PicWidthStr =  "29,29,29,29,29,29,29,29,29,100,32,180,142,445,326";
-  var PicHeightStr = "29,29,29,29,29,29,29,29,29,100,32,120,103,314,271";
+  var ImageFileList = "block0.png,435,29;block1.png,435,29;block2.png,435,29;block3.png,29,29;block4.png,29,29;block5.png,29,29;";
+  ImageFileList += "block6.png,29,29;block7.png,29,29;block8.png,29,29;";
+  ImageFileList += "LightGrey-03.png,100,100;Brown-02.png,32,32;Brown-09.png,180,120;Brown-10.png,142,103;clouds.png,445,314;outerspace.png,326,271;";
+  ImageFileList += "vintage-flake.gif,140,140;spectrum.png,360,390;simple-scales.gif,81,64;royal-rung.png,235,325;";
+  ImageFileList += "quorra.png,294,294;presence-iii.png,400,252;presence-ii.png,189,229;presence.png,607,510;";
+  ImageFileList += "knit.png,90,126;foxtail.png,40,40;dusk.png,600,600;dark-spade.png,142,98;bonfire.png,463,463";
   
-  var ImageFileList = ImageNameList.split(",");
-  var SoundFileList = SoundNameList.split(",");
-  var LocalPicWidthList = PicWidthStr.split(",");
-  var LocalPicHeightList = PicHeightStr.split(",");
+  var ImageFileListArray = ImageFileList.split(";");  
+  var SoundFileListArray = SoundFileList.split(",");
+  var ImageData;
   
-  var i;
-  MAX_IMAGES = ImageFileList.length;
+  MAX_IMAGES = ImageFileListArray.length;
   
-  for( i = 0; i < ImageFileList.length; i++ )
+  for( i = 0; i < ImageFileListArray.length; i++ )
    {
+      ImageData = ImageFileListArray[i].split(',');      
       TheImageList[i] = new Image();
-      TheImageList[i].src = 'media/' + ImageFileList[i]; 
-      PicWidthList[i] = eval(LocalPicWidthList[i]);
-      PicHeightList[i] = eval(LocalPicHeightList[i]);
+      TheImageList[i].src = 'media/' + ImageData[0]; 
+      PicWidthList[i] = eval(ImageData[1]);
+      PicHeightList[i] = eval(ImageData[2]);
    }
 
-  for( i = 0; i < SoundFileList.length; i++ )
-       TheSoundList[i] = new Audio( 'media/' + SoundFileList[i] );  
+  for( i = 0; i < SoundFileListArray.length; i++ )
+       TheSoundList[i] = new Audio( 'media/' + SoundFileListArray[i] );  
        
   TheImageList[MAX_IMAGES - 1].onload = SetImagesLoadedFlag;  
 }
-
+//=============================================================================
 function SetImagesLoadedFlag()
 {
   ImagesLoadedFlag = 1;
@@ -488,7 +489,7 @@ function DrawCell0( PictureIndex, X, Y )
   var sourcex = CellWidthPixels * PictureIndex;
   var sourcey = 0;
   
-  MainContext.drawImage( TheImageList[0], sourcex, sourcey, CellWidthPixels, CellHeightPixels, 
+  MainContext.drawImage( TheImageList[1], sourcex, sourcey, CellWidthPixels, CellHeightPixels, 
      X, Y, CellWidthPixels, CellHeightPixels );
 }
 //=============================================================================
@@ -505,7 +506,7 @@ function InitGame()
 {
     ShowBackGroundFlag = 1;
     TiledBackGroundFlag = 1;
-    BackGroundPictureIndex = Rand(9, 14);
+    BackGroundPictureIndex = Rand(9, 27);
     
     GameResolutionX = CANVAS_WIDTH;
     GameResolutionY = CANVAS_HEIGHT;
